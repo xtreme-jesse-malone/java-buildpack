@@ -19,50 +19,63 @@ require 'java_buildpack/component/versioned_dependency_component'
 require 'java_buildpack/jre'
 require 'java_buildpack/jre/memory/openjdk_memory_heuristic_factory'
 
-module JavaBuildpack::Jre
+module JavaBuildpack
+  module Jre
 
-  # Encapsulates the detect, compile, and release functionality for selecting an OpenJDK-like JRE.
-  class OpenJDKLike < JavaBuildpack::Component::VersionedDependencyComponent
+    # Encapsulates the detect, compile, and release functionality for selecting an OpenJDK-like JRE.
+    class OpenJDKLike < JavaBuildpack::Component::VersionedDependencyComponent
 
-    def initialize(context)
-      super(context)
-      @droplet.java_home.root = @droplet.sandbox
-    end
+      # Creates an instance
+      #
+      # @param [Hash] context a collection of utilities used the component
+      def initialize(context)
+        @application    = context[:application]
+        @component_name = self.class.to_s.space_case
+        @configuration  = context[:configuration]
+        @droplet        = context[:droplet]
 
-    def compile
-      download_tar
-      @droplet.copy_resources
-    end
+        @droplet.java_home.root = @droplet.sandbox
+      end
 
-    def release
-      @droplet.java_opts
-      .add_system_property('java.io.tmpdir', '$TMPDIR')
-      .add_option('-XX:OnOutOfMemoryError', killjava)
-      .concat memory
-    end
+      # (see JavaBuildpack::Component::BaseComponent#detect)
+      def detect
+        @version, @uri = JavaBuildpack::Repository::ConfiguredItem.find_item(@component_name, @configuration)
+        super
+      end
 
-    protected
+      # (see JavaBuildpack::Component::BaseComponent#compile)
+      def compile
+        download_tar
+        @droplet.copy_resources
+      end
 
-    def supports?
-      true
-    end
+      # (see JavaBuildpack::Component::BaseComponent#release)
+      def release
+        @droplet.java_opts
+        .add_system_property('java.io.tmpdir', '$TMPDIR')
+        .add_option('-XX:OnOutOfMemoryError', killjava)
+        .concat memory
+      end
 
-    private
+      private
 
-    KEY_MEMORY_HEURISTICS = 'memory_heuristics'.freeze
+      KEY_MEMORY_HEURISTICS = 'memory_heuristics'.freeze
 
-    KEY_MEMORY_SIZES = 'memory_sizes'.freeze
+      KEY_MEMORY_SIZES = 'memory_sizes'.freeze
 
-    def killjava
-      @droplet.sandbox + 'bin/killjava.sh'
-    end
+      private_constant :KEY_MEMORY_HEURISTICS, :KEY_MEMORY_SIZES
 
-    def memory
-      sizes = @configuration[KEY_MEMORY_SIZES] || {}
-      heuristics = @configuration[KEY_MEMORY_HEURISTICS] || {}
-      OpenJDKMemoryHeuristicFactory.create_memory_heuristic(sizes, heuristics, @version).resolve
+      def killjava
+        @droplet.sandbox + 'bin/killjava.sh'
+      end
+
+      def memory
+        sizes      = @configuration[KEY_MEMORY_SIZES] || {}
+        heuristics = @configuration[KEY_MEMORY_HEURISTICS] || {}
+        OpenJDKMemoryHeuristicFactory.create_memory_heuristic(sizes, heuristics, @version).resolve
+      end
+
     end
 
   end
-
 end

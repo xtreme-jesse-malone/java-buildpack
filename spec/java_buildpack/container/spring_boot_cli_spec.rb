@@ -28,7 +28,7 @@ describe JavaBuildpack::Container::SpringBootCLI do
   end
 
   it 'should not detect a .groovy directory',
-     app_fixture: 'dot_groovy' do
+     app_fixture: 'container_groovy_dot_groovy' do
 
     expect(component.detect).to be_nil
   end
@@ -63,6 +63,12 @@ describe JavaBuildpack::Container::SpringBootCLI do
     expect(component.detect).to be_nil
   end
 
+  it 'should detect if there are Groovy files and they are all POGOs plus a beans-style configuration',
+     app_fixture: 'container_spring_boot_cli_beans_configuration' do
+
+    expect(component.detect).to eq("spring-boot-cli=#{version}")
+  end
+
   it 'should detect if there are Groovy files and they are all POGOs with no main method and there is no WEB-INF directory',
      app_fixture: 'container_spring_boot_cli_valid_app' do
 
@@ -70,7 +76,7 @@ describe JavaBuildpack::Container::SpringBootCLI do
   end
 
   it 'should extract Spring Boot CLI from a ZIP',
-     app_fixture: 'container_spring_boot_cli_valid_app',
+     app_fixture:   'container_spring_boot_cli_valid_app',
      cache_fixture: 'stub-spring-boot-cli.tar.gz' do
 
     component.compile
@@ -78,35 +84,17 @@ describe JavaBuildpack::Container::SpringBootCLI do
     expect(sandbox + 'bin/spring').to exist
   end
 
-  it 'should link classpath JARs',
-     app_fixture: 'container_spring_boot_cli_valid_app',
-     cache_fixture: 'stub-spring-boot-cli.tar.gz' do
-
-    component.compile
-
-    lib = sandbox + 'lib'
-
-    jar_1 = lib + 'test-jar-1.jar'
-    expect(jar_1).to exist
-    expect(jar_1).to be_symlink
-    expect(jar_1.readlink).to eq((additional_libs_directory + 'test-jar-1.jar').relative_path_from(lib))
-
-    jar_2 = lib + 'test-jar-2.jar'
-    expect(jar_2).to exist
-    expect(jar_2).to be_symlink
-    expect(jar_2.readlink).to eq((additional_libs_directory + 'test-jar-2.jar').relative_path_from(lib))
-  end
-
   it 'should return command',
      app_fixture: 'container_spring_boot_cli_valid_app' do
 
-    expect(component.release).to eq("#{java_home.as_env_var} JAVA_OPTS=#{java_opts_str} " +
-                                        '$PWD/.java-buildpack/spring_boot_cli/bin/spring run directory/pogo_4.groovy ' +
-                                        'pogo_1.groovy pogo_2.groovy pogo_3.groovy -- --server.port=$PORT')
+    expect(component.release).to eq("#{java_home.as_env_var} JAVA_OPTS=#{java_opts_str} SERVER_PORT=$PORT " \
+                                      '$PWD/.java-buildpack/spring_boot_cli/bin/spring run ' \
+                                      '-cp $PWD/.additional_libs/test-jar-1.jar:$PWD/.additional_libs/test-jar-2.jar ' \
+                                      'directory/pogo_4.groovy invalid.groovy pogo_1.groovy pogo_2.groovy pogo_3.groovy')
   end
 
   def java_opts_str
-    "\"#{java_opts.sort.join(' ')}\""
+    "\"#{java_opts.join(' ')}\""
   end
 
 end

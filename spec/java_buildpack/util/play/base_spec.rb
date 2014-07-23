@@ -62,7 +62,7 @@ describe JavaBuildpack::Util::Play::Base do
     expect { play.send(:start_script) }.to raise_error "Method 'start_script' must be defined"
   end
 
-  context app_fixture: 'container_play_2.2_staged' do
+  context nil, app_fixture: 'container_play_2.2_staged' do
 
     let(:lib_dir) { droplet.root + 'lib' }
 
@@ -93,17 +93,17 @@ describe JavaBuildpack::Util::Play::Base do
     end
 
     it 'should correctly determine whether or not certain JARs are present in the lib directory' do
-      expect(play.has_jar? /so.*st.jar/).to be
-      expect(play.has_jar? /some.test.jar/).to be
-      expect(play.has_jar? /nosuch.jar/).not_to be
+      expect(play.jar?(/so.*st.jar/)).to be
+      expect(play.jar?(/some.test.jar/)).to be
+      expect(play.jar?(/nosuch.jar/)).not_to be
     end
 
     it 'should replace the bootstrap class' do
       play.compile
 
       content = start_script.read
-      expect(content).not_to match /play.core.server.NettyServer/
-      expect(content).to match /org.cloudfoundry.reconfiguration.play.Bootstrap/
+      expect(content).not_to match(/play.core.server.NettyServer/)
+      expect(content).to match(/org.cloudfoundry.reconfiguration.play.Bootstrap/)
     end
   end
 
